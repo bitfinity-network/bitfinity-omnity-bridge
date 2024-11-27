@@ -1,0 +1,50 @@
+{
+  "name": "@bitfinity/bridge",
+  "version": "0.1.0",
+  "description": "Bitfinity Bridge SDK for transferring tokens between Internet Computer and Bitfinity EVM via Omnity Protocol",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js",
+      "import": "./dist/index.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "pnpm build"
+  },
+  "keywords": [
+    "bitfinity",
+    "internet-computer",
+    "ic",
+    "bridge",
+    "evm",
+    "blockchain",
+    "omnity"
+  ],
+  "author": "Bitfinity Network",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.6"
+  },
+  "dependencies": {
+    "viem": "^2.21.17",
+    "@dfinity/agent": "^0.20.2"
+  }
+}
