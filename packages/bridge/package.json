@@ -45,6 +45,8 @@
   },
   "dependencies": {
     "viem": "^2.21.17",
-    "@dfinity/agent": "^0.20.2"
+    "@dfinity/agent": "^2.0.0",
+    "@dfinity/candid": "^2.0.0",
+    "@dfinity/principal": "^2.0.0"
   }
 }

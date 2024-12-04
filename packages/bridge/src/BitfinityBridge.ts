@@ -19,17 +19,21 @@ import type {
   BridgeTicket,
 } from "./types";
 import { OMNITY_PORT_ABI } from "./constants";
+import { idlFactory, _SERVICE } from "./candids/Omnity.did";
+import { createActor } from "./utils";
 
 type EvmAddress = `0x${string}`;
 
 export class IcBitfinityBridge {
-  private actor: ActorSubclass<any>;
+  private actor: ActorSubclass<_SERVICE>;
   private chain: BitfinityChain;
   private publicClient: PublicClient;
   private walletClient: WalletClient;
 
   constructor(chain: BitfinityChain) {
     this.chain = chain;
+
+    this.actor = createActor<_SERVICE>(chain.canisterId, idlFactory);
 
     this.publicClient = createPublicClient({
       chain: chain.evmChain,
@@ -63,7 +67,7 @@ export class IcBitfinityBridge {
           account: sourceIcAddress as EvmAddress,
           chain: this.chain.evmChain,
           value: fee,
-        },
+        }
       );
 
       return txHash;
@@ -116,7 +120,7 @@ export class IcBitfinityBridge {
           } catch (error) {
             return null;
           }
-        }),
+        })
       );
       return tokens.filter((t): t is Token => t !== null);
     } catch (error) {
