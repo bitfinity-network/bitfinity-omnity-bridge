@@ -1,3 +1,5 @@
+import { ActorSubclass } from "@dfinity/agent";
+import { IDL } from "@dfinity/candid";
 import type { Chain as EvmChain } from "viem";
 
 export interface BitfinityChain {
@@ -6,15 +8,51 @@ export interface BitfinityChain {
   evmChain: EvmChain;
   portContractAddress: string;
 }
+export enum ChainName {
+  ICP = "ICP",
+  Bitcoin = "Bitcoin",
+  BEVM = "BEVM",
+  BitLayer = "Bitlayer",
+  BSquared = "B² Network",
+  XLayer = "X Layer",
+  Merlin = "Merlin",
+  Bob = "Bob",
+  Rootstock = "Rootstock",
+  Bitfinity = "Bitfinity",
+  AILayer = "AILayer",
+  Solana = "Solana",
+  Ethereum = "Ethereum",
+}
+export enum ChainID {
+  eICP = "eICP",
+  Bitcoin = "Bitcoin",
+  BEVM = "bevm",
+  BitLayer = "Bitlayer",
+  BSquared = "B² Network",
+  XLayer = "X Layer",
+  Merlin = "Merlin",
+  Bob = "Bob",
+  RootStock = "RootStock",
+  Bitfinity = "Bitfinity",
+  AILayer = "AILayer",
+  sICP = "sICP",
+  Solana = "eSolana",
+  Ethereum = "Ethereum",
+}
 
 export interface Token {
-  decimals: number;
-  symbol: string;
+  id: string; // ICP: canisterId, BTC: rune_id, EVM: contract address
   name: string;
-  tokenId: string;
-  contractAddress: string;
+  symbol: string;
+  decimals: number;
+  icon?: string;
   balance: bigint;
-  icon: string;
+  token_id: string;
+  fee: bigint;
+  chain_id: ChainID;
+  composed_balance?: {
+    available: bigint;
+  };
 }
 
 export interface BridgeToEvmParams {
@@ -40,4 +78,19 @@ export type BridgeStatus = "Pending" | "Processing" | "Finalized" | "Failed";
 export interface BridgeStatusResult {
   status: BridgeStatus;
   evmTxHash?: string;
+}
+
+export interface OnBridgeParams {
+  token: Token;
+  amount: bigint;
+  sourceAddr: string;
+  targetAddr: string;
+  targetChainId: ChainID;
+  setStep?: (step: number) => void;
+  feeRate?: number;
+  transfer?: (params: any) => Promise<any>;
+  createActor?: <T>(
+    canisterId: string,
+    interfaceFactory: IDL.InterfaceFactory
+  ) => Promise<ActorSubclass<T>>;
 }

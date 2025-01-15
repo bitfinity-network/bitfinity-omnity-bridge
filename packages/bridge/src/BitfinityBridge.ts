@@ -33,6 +33,8 @@ export class IcBitfinityBridge {
   constructor(chain: BitfinityChain) {
     this.chain = chain;
 
+    console.log("chain", chain);
+
     this.actor = createActor<_SERVICE>(chain.canisterId, idlFactory);
 
     this.publicClient = createPublicClient({
@@ -97,8 +99,9 @@ export class IcBitfinityBridge {
 
   async getTokenList(): Promise<Token[]> {
     try {
+      console.log("actor", this.actor);
       const tokenList = await this.actor.get_token_list();
-
+      console.log("tokenList bridge", tokenList);
       const tokens = await Promise.all(
         tokenList.map(async (t: any) => {
           try {
