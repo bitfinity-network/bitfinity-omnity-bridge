@@ -34,6 +34,25 @@ const testTransfer = async (params: { to: string; amount: bigint }) => {
 
 export default function Home() {
   const [ticketIdInput, setTicketIdInput] = React.useState<string>("");
+  const [tokens, setTokens] = React.useState<Array<Token>>([]);
+  const [loading, setLoading] = React.useState(false);
+
+  React.useEffect(() => {
+    fetchTokens();
+  }, []);
+
+  const fetchTokens = async () => {
+    setLoading(true);
+    try {
+      const icBridge = new ICBridge();
+      const tokenList = await icBridge.getTokenList();
+      setTokens(tokenList);
+    } catch (error) {
+      console.error("Failed to fetch tokens:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const testParams = {
     sourceAddr:
@@ -89,6 +108,41 @@ export default function Home() {
         <h1 className="text-3xl font-bold text-center mb-8 text-secondary-900">
           Bridge to Bitfinity
         </h1>
+
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold mb-4">Available Tokens</h2>
+          {loading ? (
+            <div className="text-center">Loading tokens...</div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {tokens.map((token) => (
+                <div
+                  key={token.token_id}
+                  className="p-4 border rounded-lg bg-white shadow-sm"
+                >
+                  <div className="flex items-center gap-2">
+                    {token.icon && token.icon.length > 0 && (
+                      <img
+                        src={token.icon[0]}
+                        alt={token.symbol}
+                        className="w-8 h-8"
+                      />
+                    )}
+                    <div>
+                      <h3 className="font-medium">{token.name}</h3>
+                      <p className="text-sm text-gray-600">{token.symbol}</p>
+                    </div>
+                  </div>
+                  <div className="mt-2 text-sm text-gray-500">
+                    <p>Decimals: {token.decimals}</p>
+                    <p className="truncate">ID: {token.token_id}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         <div className="flex flex-col gap-4 items-center">
           <button
             onClick={handleTransfer}

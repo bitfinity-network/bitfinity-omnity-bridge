@@ -219,7 +219,7 @@ export class ICBridge {
 
     const status = await actor.mint_token_status(ticketId);
 
-    console.log("🎫 Ticket Status:", status);
+    console.log("Ticket Status:", status);
 
     if ("Finalized" in status) {
       console.log("Transaction Hash:", status.Finalized.tx_hash);
@@ -227,5 +227,16 @@ export class ICBridge {
     } else {
       return "Unknown";
     }
+  }
+
+  async getTokenList(): Promise<Array<Token>> {
+    const actor = createActor<_SERVICE>(
+      icpChainCanisterId,
+      ICPCustomsInterfaceFactory
+    );
+
+    const tokens = await actor.get_token_list();
+    console.log("Available Tokens:", tokens);
+    return tokens;
   }
 }
