@@ -12,25 +12,29 @@ import {
   idlFactory as IcrcLedgerInterfaceFactory,
   type _SERVICE as IcrcLedgerService,
 } from "./candids/IcrcLedger.did";
+import {
+  idlFactory as ICPRouteInterfaceFactory,
+  type _SERVICE as ICPRouteService,
+} from "./candids/IcpRoute.did";
 import { createActor } from "./utils";
+import { AccountIdentifier, LedgerCanister } from "@dfinity/ledger-icp";
 
-const icpChainCanisterId = "nlgkm-4qaaa-aaaar-qah2q-cai";
+const icpChainCanisterId = "7ywcn-nyaaa-aaaar-qaeza-cai";
 export class ICBridge {
-  //   private actor: ActorSubclass<_SERVICE>;
+  private actor: ActorSubclass<ICPRouteService>;
   // private chain: Chain;
   // private provider: JsonRpcProvider;
   // private signer: ethers.Signer;
 
-  // constructor(chain: Chain, agent: Agent, provider: JsonRpcProvider) {
-  // 	this.chain = chain;
-  // 	this.provider = provider;
-  // 	this.signer = this.provider.getSigner();
-  // 	this.actor = createActor<_SERVICE>({
-  // 		canisterId: chain.canisterId,
-  // 		interfaceFactory: ICPCustomsInterfaceFactory,
-  // 		agent
-  // 	});
-  // }
+  constructor() {
+    // this.chain = chain;
+    // this.provider = provider;
+    // this.signer = this.provider.getSigner();
+    this.actor = createActor<ICPRouteService>(
+      icpChainCanisterId,
+      ICPRouteInterfaceFactory
+    );
+  }
 
   async onBridge(params: OnBridgeParams): Promise<string> {
     const {
@@ -42,9 +46,11 @@ export class ICBridge {
       createActor,
       transfer,
     } = params;
+
     if (!createActor) {
       throw new Error("createActor is required");
     }
+
     const actor = await createActor<_SERVICE>(
       icpChainCanisterId,
       ICPCustomsInterfaceFactory
@@ -88,13 +94,17 @@ export class ICBridge {
       throw new Error("createActor is required");
     }
     const spender = Principal.fromText(icpChainCanisterId);
+    console.log("spender", spender);
     const account = Principal.fromText(sourceAddr);
+    console.log("account", account);
     const { allowance, transactionFee } = IcrcLedgerCanister.create({
       canisterId: Principal.fromText(token.id),
     });
     // check allowance
     const txFee = await transactionFee({ certified: false });
+    console.log("txFee", txFee);
     const approvingAmount = amount + txFee;
+    console.log("approvingAmount", approvingAmount);
     const { allowance: allowanceAmount } = await allowance({
       spender: {
         owner: spender,
@@ -112,6 +122,7 @@ export class ICBridge {
     );
 
     if (allowanceAmount < approvingAmount) {
+      console.log("approve");
       await icrcLedger.icrc2_approve({
         fee: [],
         memo: [],
@@ -158,5 +169,47 @@ export class ICBridge {
       amount,
       createActor,
     });
+
+    const account = Principal.fromText(userAddr);
+    console.log("account", account);
+    const [redeemFee] = await this.actor.get_redeem_fee(targetChainId);
+    console.log("redeemFee", redeemFee);
+    if (redeemFee === undefined) {
+      throw new Error("Redeem fee not set");
+    }
+    const feeAccountArray = await this.actor.get_fee_account([account]);
+    console.log("feeAccountArray", feeAccountArray);
+    const lc = LedgerCanister.create();
+
+    const feeAccount = Array.from(feeAccountArray)
+      .map((i) => ("0" + i.toString(16)).slice(-2))
+      .join("");
+    const redeemAccountBalance = await lc.accountBalance({
+      accountIdentifier: feeAccount,
+      certified: false,
+    });
+    // deposit redeem fee
+    console.log("redeemAccountBalance", redeemAccountBalance);
+    console.log("redeemFee", redeemFee);
+    if (redeemAccountBalance < redeemFee) {
+      const depositAmount = redeemFee - redeemAccountBalance;
+      // check balance
+      const myIcpBalance = await lc.accountBalance({
+        accountIdentifier: AccountIdentifier.fromPrincipal({
+          principal: account,
+        }),
+        certified: false,
+      });
+      console.log("myIcpBalance", myIcpBalance);
+      console.log("depositAmount", depositAmount);
+      if (depositAmount >= myIcpBalance) {
+        throw new Error("Insufficient balance");
+      }
+      // deposit
+      await transfer({
+        to: feeAccount,
+        amount: depositAmount,
+      });
+    }
   }
 }

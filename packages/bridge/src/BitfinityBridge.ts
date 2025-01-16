@@ -64,7 +64,7 @@ export class IcBitfinityBridge {
       const { fee } = await this.getBridgeFee();
 
       const txHash = await portContract.write.transportToken(
-        [this.chain.chainId, token.tokenId, targetEvmAddress, amount, ""],
+        [this.chain.chainId, token.token_id, targetEvmAddress, amount, ""],
         {
           account: sourceIcAddress as EvmAddress,
           chain: this.chain.evmChain,
