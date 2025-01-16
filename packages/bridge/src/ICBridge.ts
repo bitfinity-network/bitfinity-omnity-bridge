@@ -19,7 +19,7 @@ import {
 import { createActor } from "./utils";
 import { AccountIdentifier, LedgerCanister } from "@dfinity/ledger-icp";
 
-const icpChainCanisterId = "7ywcn-nyaaa-aaaar-qaeza-cai";
+const icpChainCanisterId = "nlgkm-4qaaa-aaaar-qah2q-cai";
 export class ICBridge {
   private actor: ActorSubclass<ICPRouteService>;
   // private chain: Chain;
@@ -56,7 +56,7 @@ export class ICBridge {
       ICPCustomsInterfaceFactory
     );
 
-    await this.prepareForGenerateTicket({
+    const result = await this.prepareForGenerateTicket({
       token,
       userAddr: sourceAddr,
       amount,
@@ -65,13 +65,17 @@ export class ICBridge {
       createActor,
     });
 
-    const ticketResult = await actor.generate_ticket({
+    console.log("prepareForGenerateTicketResult", result);
+    const ticketResult = await actor.generate_ticket_v2({
       token_id: token.token_id,
       from_subaccount: [],
       target_chain_id: targetChainId,
       amount,
       receiver: targetAddr,
+      memo: [],
     });
+
+    console.log("ticketResult", ticketResult);
 
     if ("Err" in ticketResult) {
       console.error(ticketResult.Err);
@@ -93,18 +97,34 @@ export class ICBridge {
     if (!createActor) {
       throw new Error("createActor is required");
     }
+
+    console.log(
+      "Amount to bridge:",
+      Number(amount) / Math.pow(10, token.decimals),
+      token.symbol
+    );
+
     const spender = Principal.fromText(icpChainCanisterId);
-    console.log("spender", spender);
     const account = Principal.fromText(sourceAddr);
-    console.log("account", account);
+
     const { allowance, transactionFee } = IcrcLedgerCanister.create({
       canisterId: Principal.fromText(token.id),
     });
-    // check allowance
+
     const txFee = await transactionFee({ certified: false });
-    console.log("txFee", txFee);
+    console.log(
+      "Transaction Fee:",
+      Number(txFee) / Math.pow(10, token.decimals),
+      token.symbol
+    );
+
     const approvingAmount = amount + txFee;
-    console.log("approvingAmount", approvingAmount);
+    console.log(
+      "Total amount to approve:",
+      Number(approvingAmount) / Math.pow(10, token.decimals),
+      token.symbol
+    );
+
     const { allowance: allowanceAmount } = await allowance({
       spender: {
         owner: spender,
@@ -115,27 +135,42 @@ export class ICBridge {
         subaccount: [],
       },
     });
-    // approve
-    const icrcLedger: IcrcLedgerService = await createActor<IcrcLedgerService>(
-      token.id,
-      IcrcLedgerInterfaceFactory
+
+    console.log(
+      "Current allowance:",
+      Number(allowanceAmount) / Math.pow(10, token.decimals),
+      token.symbol
     );
 
     if (allowanceAmount < approvingAmount) {
-      console.log("approve");
-      await icrcLedger.icrc2_approve({
-        fee: [],
-        memo: [],
-        from_subaccount: [],
-        created_at_time: [],
-        amount: approvingAmount,
-        spender: {
-          owner: spender,
-          subaccount: [],
-        },
-        expires_at: [],
-        expected_allowance: [],
-      });
+      console.log("Current allowance insufficient. Initiating approval...");
+
+      const icrcLedger = await createActor<IcrcLedgerService>(
+        token.id,
+        IcrcLedgerInterfaceFactory
+      );
+
+      try {
+        await icrcLedger.icrc2_approve({
+          fee: [],
+          memo: [],
+          from_subaccount: [],
+          created_at_time: [],
+          amount: approvingAmount,
+          spender: {
+            owner: spender,
+            subaccount: [],
+          },
+          expires_at: [],
+          expected_allowance: [],
+        });
+        console.log("Approval successful!");
+      } catch (error) {
+        console.error("Approval failed:", error);
+        throw error;
+      }
+    } else {
+      console.log("Current allowance is sufficient, skipping approval");
     }
   }
 
@@ -160,9 +195,11 @@ export class ICBridge {
       interfaceFactory: IDL.InterfaceFactory
     ) => Promise<ActorSubclass<T>>;
   }) {
+    console.log("starting prepareForGenerateTicket");
     if (!transfer) {
       throw new Error("transfer is required");
     }
+
     await this.onApprove({
       token,
       sourceAddr: userAddr,
@@ -172,44 +209,23 @@ export class ICBridge {
 
     const account = Principal.fromText(userAddr);
     console.log("account", account);
-    const [redeemFee] = await this.actor.get_redeem_fee(targetChainId);
-    console.log("redeemFee", redeemFee);
-    if (redeemFee === undefined) {
-      throw new Error("Redeem fee not set");
-    }
-    const feeAccountArray = await this.actor.get_fee_account([account]);
-    console.log("feeAccountArray", feeAccountArray);
-    const lc = LedgerCanister.create();
+  }
 
-    const feeAccount = Array.from(feeAccountArray)
-      .map((i) => ("0" + i.toString(16)).slice(-2))
-      .join("");
-    const redeemAccountBalance = await lc.accountBalance({
-      accountIdentifier: feeAccount,
-      certified: false,
-    });
-    // deposit redeem fee
-    console.log("redeemAccountBalance", redeemAccountBalance);
-    console.log("redeemFee", redeemFee);
-    if (redeemAccountBalance < redeemFee) {
-      const depositAmount = redeemFee - redeemAccountBalance;
-      // check balance
-      const myIcpBalance = await lc.accountBalance({
-        accountIdentifier: AccountIdentifier.fromPrincipal({
-          principal: account,
-        }),
-        certified: false,
-      });
-      console.log("myIcpBalance", myIcpBalance);
-      console.log("depositAmount", depositAmount);
-      if (depositAmount >= myIcpBalance) {
-        throw new Error("Insufficient balance");
-      }
-      // deposit
-      await transfer({
-        to: feeAccount,
-        amount: depositAmount,
-      });
+  async checkMintStatus(ticketId: string): Promise<"Finalized" | "Unknown"> {
+    const actor = createActor<_SERVICE>(
+      icpChainCanisterId,
+      ICPCustomsInterfaceFactory
+    );
+
+    const status = await actor.mint_token_status(ticketId);
+
+    console.log("🎫 Ticket Status:", status);
+
+    if ("Finalized" in status) {
+      console.log("Transaction Hash:", status.Finalized.tx_hash);
+      return "Finalized";
+    } else {
+      return "Unknown";
     }
   }
 }
