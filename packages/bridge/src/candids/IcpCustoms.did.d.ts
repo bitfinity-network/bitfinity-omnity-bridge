@@ -41,7 +41,7 @@ export interface GenerateTicketReq {
   target_chain_id: string;
   amount: bigint;
   receiver: string;
-  action: TxAction;
+  memo: [] | [Uint8Array | number[]];
 }
 export interface InitArgs {
   ckbtc_ledger_principal: Principal;

@@ -7,33 +7,22 @@ import {
   getContract,
   type PublicClient,
   type WalletClient,
-  isAddress,
 } from "viem";
-import type {
-  BitfinityChain,
-  Token,
-  BridgeToEvmParams,
-  BridgeFee,
-  BridgeStatus,
-  BridgeStatusResult,
-  BridgeTicket,
-} from "./types";
+import type { Chain, OnBridgeParams } from "./types";
 import { OMNITY_PORT_ABI } from "./constants";
 import { idlFactory, _SERVICE } from "./candids/Omnity.did";
 import { createActor } from "./utils";
 
 type EvmAddress = `0x${string}`;
 
-export class IcBitfinityBridge {
+export class BitfinityBridge {
   private actor: ActorSubclass<_SERVICE>;
-  private chain: BitfinityChain;
+  private chain: Chain;
   private publicClient: PublicClient;
   private walletClient: WalletClient;
 
-  constructor(chain: BitfinityChain) {
+  constructor(chain: Chain) {
     this.chain = chain;
-
-    console.log("chain", chain);
 
     this.actor = createActor<_SERVICE>(chain.canisterId, idlFactory);
 
@@ -48,104 +37,46 @@ export class IcBitfinityBridge {
     });
   }
 
-  async bridgeToEvm(params: BridgeToEvmParams): Promise<string> {
-    try {
-      const { token, sourceIcAddress, targetEvmAddress, amount } = params;
+  async bridgeToICPCustom(params: {
+    tokenId: string;
+    sourceAddr: string;
+    targetAddr: string;
+    amount: bigint;
+    targetChainId: string;
+  }): Promise<string> {
+    const { tokenId, sourceAddr, targetAddr, amount, targetChainId } = params;
 
-      const portContract = getContract({
-        address: this.chain.portContractAddress as EvmAddress,
-        abi: OMNITY_PORT_ABI,
-        client: {
-          public: this.publicClient,
-          wallet: this.walletClient,
-        },
-      });
+    const portContractAddr = this.chain.contractAddress;
+    if (!portContractAddr) {
+      throw new Error("Missing port contract address");
+    }
 
-      const { fee } = await this.getBridgeFee();
+    const portContract = getContract({
+      address: portContractAddr as EvmAddress,
+      abi: OMNITY_PORT_ABI,
+      client: {
+        public: this.publicClient,
+        wallet: this.walletClient,
+      },
+    });
 
-      const txHash = await portContract.write.transportToken(
-        [this.chain.chainId, token.token_id, targetEvmAddress, amount, ""],
-        {
-          account: sourceIcAddress as EvmAddress,
-          chain: this.chain.evmChain,
-          value: fee,
-        }
-      );
+    console.log("portContract", portContract);
 
-      return txHash;
-    } catch (error) {
-      if (error instanceof Error) {
-        if (error.message.includes("User rejected the request")) {
-          throw new Error("User rejected the transaction");
-        }
+    const [fee] = await this.actor.get_fee(targetChainId);
+
+    // const _fee = fee ? fee / BigInt(1000) : BigInt(0);
+
+    const txHash = await portContract.write.redeemToken(
+      [tokenId, targetAddr, amount],
+      {
+        account: sourceAddr as EvmAddress,
+        chain: this.chain.evmChain,
+        value: BigInt(1000),
       }
-      throw error;
-    }
-  }
+    );
 
-  async getBridgeFee(): Promise<BridgeFee> {
-    const [fee] = await this.actor.get_fee(this.chain.chainId);
-    if (fee === undefined) {
-      throw new Error("Failed to get bridge fee");
-    }
+    console.log("txHash", txHash);
 
-    const { symbol, decimals } = this.chain.evmChain.nativeCurrency;
-    return {
-      fee,
-      symbol,
-      decimals,
-    };
-  }
-
-  async getTokenList(): Promise<Token[]> {
-    try {
-      console.log("actor", this.actor);
-      const tokenList = await this.actor.get_token_list();
-      console.log("tokenList bridge", tokenList);
-      const tokens = await Promise.all(
-        tokenList.map(async (t: any) => {
-          try {
-            const { decimals, icon, evm_contract, symbol, token_id } = t;
-            const contractAddress = evm_contract[0];
-            if (!contractAddress) {
-              throw new Error("Missing token contract address");
-            }
-            const name = token_id.split("-")[2];
-            return {
-              decimals,
-              symbol,
-              name,
-              tokenId: token_id,
-              contractAddress,
-              balance: 0n,
-              icon: icon[0] ?? "",
-            } as Token;
-          } catch (error) {
-            return null;
-          }
-        })
-      );
-      return tokens.filter((t): t is Token => t !== null);
-    } catch (error) {
-      return [];
-    }
-  }
-
-  async getBridgeStatus(ticket: BridgeTicket): Promise<BridgeStatusResult> {
-    const res = await this.actor.mint_token_status(ticket.ticketId);
-    const status = Object.keys(res)[0] as BridgeStatus;
-    const statusValue = Object.values(res)[0] as { tx_hash?: string };
-    let evmTxHash;
-    if (status === "Finalized") {
-      evmTxHash = statusValue?.tx_hash;
-    }
-    return {
-      status,
-      evmTxHash,
-    };
-  }
-
-  static validateEvmAddress(addr: string): boolean {
-    return isAddress(addr);
+    return txHash;
   }
 }

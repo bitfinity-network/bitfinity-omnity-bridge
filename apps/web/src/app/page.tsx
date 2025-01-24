@@ -1,6 +1,6 @@
 "use client";
 
-import { ChainID } from "@bitfinity/bridge";
+import { ChainID, BitfinityBridge, Token, Chain } from "@bitfinity/bridge";
 import { IDL } from "@dfinity/candid";
 import { ICBridge } from "@bitfinity/bridge/src/ICBridge";
 import React from "react";
@@ -64,10 +64,10 @@ export default function Home() {
       decimals: 8,
       fee: BigInt(100000),
       icon: "https://raw.githubusercontent.com/octopus-network/omnity-interoperability/9061b7e2ea9e0717b47010279ff1ffd6f1f4c1fc/assets/token_logo/icp.svg",
-      id: "2ouva-viaaa-aaaaq-aaamq-cai",
-      name: "CHAT",
-      symbol: "CHAT",
-      token_id: "sICP-icrc-CHAT",
+      id: "zfcdd-tqaaa-aaaaq-aaaga-cai",
+      name: "Dragginz",
+      symbol: "DKP",
+      token_id: "sICP-icrc-DKP",
     },
     amount: BigInt(100000),
     createActor: testCreatActor,
@@ -100,6 +100,37 @@ export default function Home() {
       console.error("Status check failed:", error);
       alert("Failed to check status");
     }
+  };
+
+  const handleBitfinityToICPCustoms = async () => {
+    const chain: Chain = {
+      canisterId: "pw3ee-pyaaa-aaaar-qahva-cai",
+      evmChain: {
+        id: 355110,
+        name: "Bitfinity",
+        nativeCurrency: {
+          name: "Bitfinity",
+          symbol: "BTF",
+          decimals: 18,
+        },
+        rpcUrls: {
+          default: {
+            http: ["https://explorer.mainnet.bitfinity.network"],
+          },
+        },
+      },
+      contractAddress: "0x1Ad8cec9E5a4A441FE407785E188AbDeb4371468",
+    };
+    const bitfinityBridge = new BitfinityBridge(chain);
+    const res = await bitfinityBridge.bridgeToICPCustom({
+      tokenId: "sICP-icrc-DKP",
+      sourceAddr: "0xeE94DaC8671a74F8DC8D90AEA63F1D1fEDb8C3d3",
+      targetAddr:
+        "nizq7-3pdix-fdqim-arhfb-q2pvf-n4jpk-uukgm-enmpy-hebkc-dw3fc-3ae",
+      amount: BigInt(10000000),
+      targetChainId: ChainID.sICP,
+    });
+    console.log("res", res);
   };
 
   return (
@@ -149,6 +180,12 @@ export default function Home() {
             className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
           >
             Transfer CHAT
+          </button>
+          <button
+            onClick={handleBitfinityToICPCustoms}
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            Bitfinity to ICP customs
           </button>
 
           <div className="flex gap-2 items-center mt-4">

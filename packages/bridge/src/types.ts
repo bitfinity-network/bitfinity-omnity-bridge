@@ -88,9 +88,26 @@ export interface OnBridgeParams {
   targetChainId: ChainID;
   setStep?: (step: number) => void;
   feeRate?: number;
-  transfer?: (params: any) => Promise<any>;
   createActor?: <T>(
     canisterId: string,
     interfaceFactory: IDL.InterfaceFactory
   ) => Promise<ActorSubclass<T>>;
+}
+export enum ChainType {
+  Settlement = "SettlementChain",
+  ExecutionChain = "ExecutionChain",
+}
+
+export enum ChainState {
+  Active = "Active",
+  Deactive = "Deactive",
+}
+export enum ServiceType {
+  Route = "Route",
+  Customs = "Customs",
+}
+export interface Chain {
+  canisterId: string;
+  contractAddress?: string;
+  evmChain?: EvmChain;
 }

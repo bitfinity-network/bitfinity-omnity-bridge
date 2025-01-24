@@ -3,7 +3,7 @@ import { type ActorSubclass, type Agent } from "@dfinity/agent";
 import type { IDL } from "@dfinity/candid";
 import { IcrcLedgerCanister } from "@dfinity/ledger-icrc";
 import { Principal } from "@dfinity/principal";
-import type { ChainID, OnBridgeParams, Token } from ".";
+import type { OnBridgeParams, Token } from ".";
 import {
   idlFactory as ICPCustomsInterfaceFactory,
   type _SERVICE,
@@ -12,16 +12,11 @@ import {
   idlFactory as IcrcLedgerInterfaceFactory,
   type _SERVICE as IcrcLedgerService,
 } from "./candids/IcrcLedger.did";
-import {
-  idlFactory as ICPRouteInterfaceFactory,
-  type _SERVICE as ICPRouteService,
-} from "./candids/IcpRoute.did";
+
 import { createActor } from "./utils";
-import { AccountIdentifier, LedgerCanister } from "@dfinity/ledger-icp";
 
 const icpChainCanisterId = "nlgkm-4qaaa-aaaar-qah2q-cai";
 export class ICBridge {
-  private actor: ActorSubclass<ICPRouteService>;
   // private chain: Chain;
   // private provider: JsonRpcProvider;
   // private signer: ethers.Signer;
@@ -30,10 +25,6 @@ export class ICBridge {
     // this.chain = chain;
     // this.provider = provider;
     // this.signer = this.provider.getSigner();
-    this.actor = createActor<ICPRouteService>(
-      icpChainCanisterId,
-      ICPRouteInterfaceFactory
-    );
   }
 
   async onBridge(params: OnBridgeParams): Promise<string> {
@@ -44,7 +35,6 @@ export class ICBridge {
       targetChainId,
       amount,
       createActor,
-      transfer,
     } = params;
 
     if (!createActor) {
@@ -56,16 +46,13 @@ export class ICBridge {
       ICPCustomsInterfaceFactory
     );
 
-    const result = await this.prepareForGenerateTicket({
+    await this.prepareForGenerateTicket({
       token,
       userAddr: sourceAddr,
       amount,
-      targetChainId,
-      transfer,
       createActor,
     });
 
-    console.log("prepareForGenerateTicketResult", result);
     const ticketResult = await actor.generate_ticket_v2({
       token_id: token.token_id,
       from_subaccount: [],
@@ -178,27 +165,17 @@ export class ICBridge {
     token,
     userAddr,
     amount,
-    targetChainId,
-    transfer,
     createActor,
   }: {
     token: Token;
     userAddr: string;
     amount: bigint;
-    targetChainId: ChainID;
-    transfer?: (params: {
-      to: string;
-      amount: bigint;
-    }) => Promise<number | bigint | undefined>;
     createActor?: <T>(
       canisterId: string,
       interfaceFactory: IDL.InterfaceFactory
     ) => Promise<ActorSubclass<T>>;
   }) {
     console.log("starting prepareForGenerateTicket");
-    if (!transfer) {
-      throw new Error("transfer is required");
-    }
 
     await this.onApprove({
       token,
@@ -206,9 +183,6 @@ export class ICBridge {
       amount,
       createActor,
     });
-
-    const account = Principal.fromText(userAddr);
-    console.log("account", account);
   }
 
   async checkMintStatus(ticketId: string): Promise<"Finalized" | "Unknown"> {
@@ -229,7 +203,7 @@ export class ICBridge {
     }
   }
 
-  async getTokenList(): Promise<Array<Token>> {
+  async getTokenList() {
     const actor = createActor<_SERVICE>(
       icpChainCanisterId,
       ICPCustomsInterfaceFactory

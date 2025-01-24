@@ -25,23 +25,23 @@ export interface _SERVICE {
 // Generated IDL factory
 export const idlFactory = ({ IDL }) => {
   const TokenResp = IDL.Record({
-    'decimals': IDL.Nat8,
-    'token_id': IDL.Text,
-    'icon': IDL.Opt(IDL.Text),
-    'evm_contract': IDL.Vec(IDL.Text),
-    'symbol': IDL.Text,
+    decimals: IDL.Nat8,
+    token_id: IDL.Text,
+    icon: IDL.Opt(IDL.Text),
+    evm_contract: IDL.Vec(IDL.Text),
+    symbol: IDL.Text,
   });
 
   const MintTokenStatus = IDL.Variant({
-    'Pending': IDL.Null,
-    'Processing': IDL.Null,
-    'Finalized': IDL.Record({ 'tx_hash': IDL.Text }),
-    'Failed': IDL.Null,
+    Pending: IDL.Null,
+    Processing: IDL.Null,
+    Finalized: IDL.Record({ tx_hash: IDL.Text }),
+    Failed: IDL.Null,
   });
 
   return IDL.Service({
-    'get_fee': IDL.Func([IDL.Text], [IDL.Opt(IDL.Nat)], ['query']),
-    'get_token_list': IDL.Func([], [IDL.Vec(TokenResp)], ['query']),
-    'mint_token_status': IDL.Func([IDL.Text], [MintTokenStatus], ['query']),
+    get_fee: IDL.Func([IDL.Text], [IDL.Opt(IDL.Nat64)], ["query"]),
+    get_token_list: IDL.Func([], [IDL.Vec(TokenResp)], ["query"]),
+    mint_token_status: IDL.Func([IDL.Text], [MintTokenStatus], ["query"]),
   });
 };
