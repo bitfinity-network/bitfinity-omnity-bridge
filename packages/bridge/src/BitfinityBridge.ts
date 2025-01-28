@@ -60,23 +60,36 @@ export class BitfinityBridge {
       },
     });
 
-    console.log("portContract", portContract);
+    try {
+      const [fee] = await this.actor.get_fee(targetChainId);
 
-    const [fee] = await this.actor.get_fee(targetChainId);
-
-    // const _fee = fee ? fee / BigInt(1000) : BigInt(0);
-
-    const txHash = await portContract.write.redeemToken(
-      [tokenId, targetAddr, amount],
-      {
-        account: sourceAddr as EvmAddress,
+      console.log("Bridge Transaction Details:", {
         chain: this.chain.evmChain,
-        value: BigInt(1000),
+        targetChainId,
+        sourceAddr,
+        tokenId,
+        targetAddr,
+        amount,
+        fee,
+        portContractAddr,
+      });
+
+      const txHash = await portContract.write.redeemToken(
+        [tokenId, targetAddr, amount],
+        {
+          account: sourceAddr as EvmAddress,
+          chain: this.chain.evmChain,
+          value: fee,
+        }
+      );
+
+      return txHash;
+    } catch (error) {
+      console.error("Bridge Transaction Failed:", error);
+      if (error instanceof Error) {
+        throw new Error(`Bridge transaction failed: ${error.message}`);
       }
-    );
-
-    console.log("txHash", txHash);
-
-    return txHash;
+      throw error;
+    }
   }
 }

@@ -107,15 +107,21 @@ export default function Home() {
       canisterId: "pw3ee-pyaaa-aaaar-qahva-cai",
       evmChain: {
         id: 355110,
-        name: "Bitfinity",
+        name: "Bitfinity Mainnet",
         nativeCurrency: {
-          name: "Bitfinity",
+          name: "BTF",
           symbol: "BTF",
           decimals: 18,
         },
+        blockExplorers: {
+          default: {
+            name: "Bitfinity Explorer",
+            url: "https://explorer.mainnet.bitfinity.network",
+          },
+        },
         rpcUrls: {
           default: {
-            http: ["https://explorer.mainnet.bitfinity.network"],
+            http: ["https://mainnet.bitfinity.network"],
           },
         },
       },
@@ -124,10 +130,10 @@ export default function Home() {
     const bitfinityBridge = new BitfinityBridge(chain);
     const res = await bitfinityBridge.bridgeToICPCustom({
       tokenId: "sICP-icrc-DKP",
-      sourceAddr: "0xeE94DaC8671a74F8DC8D90AEA63F1D1fEDb8C3d3",
+      sourceAddr: "0xee94dac8671a74f8dc8d90aea63f1d1fedb8c3d3",
       targetAddr:
         "nizq7-3pdix-fdqim-arhfb-q2pvf-n4jpk-uukgm-enmpy-hebkc-dw3fc-3ae",
-      amount: BigInt(10000000),
+      amount: 20000000n,
       targetChainId: ChainID.sICP,
     });
     console.log("res", res);
